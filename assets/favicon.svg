@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" fill="#2238ff"/>
+  <text x="32" y="49" text-anchor="middle" font-family="Impact, 'Arial Black', 'Helvetica Neue', Arial, sans-serif" font-size="46" font-weight="900" letter-spacing="-1" fill="#f2ede2">16</text>
+  <rect x="12" y="52" width="7" height="6" fill="#ff4f7e"/>
+  <rect x="28.5" y="52" width="7" height="6" fill="#ff4f7e"/>
+  <rect x="45" y="52" width="7" height="6" fill="#ff4f7e"/>
+</svg>
