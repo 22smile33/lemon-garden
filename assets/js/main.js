@@ -353,8 +353,8 @@
     var n = PHOTOS.length;
     var loopWidth = n * step;
     var frameWidth = Math.max(1, step - 20);
-    var pos = loopWidth > 0 ? ((els.film.scrollLeft % loopWidth) + loopWidth) % loopWidth : 0;
-    var center = pos + (filmViewWidth || els.film.clientWidth) / 2;
+    var rel = loopWidth > 0 ? ((els.film.scrollLeft - step) % loopWidth + loopWidth) % loopWidth : 0;
+    var center = rel + (filmViewWidth || els.film.clientWidth) / 2;
     var indexFloat = step > 0 ? (center - filmPadLeft - frameWidth / 2) / step : 0;
 
     while (indexFloat >= n) indexFloat -= n;
@@ -363,7 +363,7 @@
     var ratio = n > 1 ? Math.min(1, Math.max(0, indexFloat / (n - 1))) : 0;
     els.progress.style.width = (ratio * 100).toFixed(3) + '%';
 
-    var index = Math.min(n, Math.max(1, Math.round(indexFloat) + 1));
+    var index = Math.min(n, Math.max(1, Math.floor(indexFloat) + 1));
     if (els.counter) els.counter.textContent = pad(index) + ' / ' + n;
   }
 
@@ -373,11 +373,14 @@
     var dt = Math.min((time - filmLast) / 1000, 0.05);
     filmLast = time;
 
-    var loopWidth = PHOTOS.length * frameStep();
+    var step = frameStep();
+    var loopWidth = PHOTOS.length * step;
     if (loopWidth > 0) {
+      var start = step;
+      var end = start + loopWidth;
       var next = els.film.scrollLeft + 120 * dt;
-      while (next >= loopWidth) next -= loopWidth;
-      if (next < 0) next += loopWidth;
+      if (next >= end) next -= loopWidth;
+      if (next < start) next += loopWidth;
       els.film.scrollLeft = next;
       updateProgress();
     }
@@ -402,7 +405,13 @@
   function initFilm() {
     var film = els.film;
 
-    $$('.frame', film).forEach(function (frame) {
+    var originals = $$('.frame', film);
+    var pre = originals[originals.length - 1].cloneNode(true);
+    pre.setAttribute('aria-hidden', 'true');
+    pre.setAttribute('tabindex', '-1');
+    els.track.insertBefore(pre, els.track.firstChild);
+
+    originals.forEach(function (frame) {
       var clone = frame.cloneNode(true);
       clone.setAttribute('aria-hidden', 'true');
       clone.setAttribute('tabindex', '-1');
@@ -413,7 +422,15 @@
 
     film.addEventListener('scroll', updateProgress, { passive: true });
     window.addEventListener('resize', function () {
+      var oldStep = frameStepCache || frameStep();
+      var rel = els.film.scrollLeft - oldStep;
       refreshFilmMetrics();
+      var newStep = frameStep();
+      var loopWidth = PHOTOS.length * newStep;
+      rel = ((rel % loopWidth) + loopWidth) % loopWidth;
+      els.film.style.scrollBehavior = 'auto';
+      els.film.scrollLeft = newStep + rel;
+      els.film.style.scrollBehavior = '';
       updateProgress();
     });
 
@@ -481,6 +498,10 @@
     });
 
     refreshFilmMetrics();
+    var startStep = frameStep();
+    film.style.scrollBehavior = 'auto';
+    film.scrollLeft = startStep;
+    film.style.scrollBehavior = '';
     updateProgress();
     setPlaying(true);
   }

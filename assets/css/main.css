@@ -704,9 +704,10 @@ ul {
 .film-wrap::after { bottom: 14px; }
 
 .film {
+  --frame-w: clamp(300px, 40vw, 640px);
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 2px clamp(20px, 4vw, 54px);
+  padding: 2px max(18px, calc((100% - var(--frame-w)) / 2));
   cursor: grab;
   scrollbar-width: none;
   scroll-snap-type: none;
@@ -737,7 +738,7 @@ ul {
 }
 
 .frame {
-  flex: 0 0 clamp(320px, 42vw, 700px);
+  flex: 0 0 var(--frame-w);
   display: block;
   padding: 0;
   text-align: left;
@@ -1548,10 +1549,7 @@ dialog::backdrop {
     min-height: clamp(400px, 44vw, 540px);
   }
   .film {
-    padding-inline: 28px;
-  }
-  .frame {
-    flex-basis: clamp(300px, 46vw, 620px);
+    --frame-w: clamp(280px, 40vw, 540px);
   }
 }
 
@@ -1754,11 +1752,7 @@ dialog::backdrop {
   }
 
   .film {
-    padding-inline: 18px;
-  }
-
-  .frame {
-    flex-basis: 82vw;
+    --frame-w: 82vw;
   }
 
   .film-ui {
