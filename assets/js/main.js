@@ -217,6 +217,9 @@
   var els = {};
   var filmRaf = 0;
   var filmLast = 0;
+  var frameStepCache = 0;
+  var filmPadLeft = 0;
+  var filmViewWidth = 0;
 
   function t(key) {
     var dict = I18N[state.lang] || I18N.zh;
@@ -318,9 +321,11 @@
   /* ---------------- film strip ---------------- */
 
   function frameStep() {
+    if (frameStepCache) return frameStepCache;
     var first = $('.frame', els.film);
     var w = first ? first.getBoundingClientRect().width : 0;
-    return (w || 420) + 20;
+    frameStepCache = (w || 420) + 20;
+    return frameStepCache;
   }
 
   function scrollFilm(direction) {
@@ -336,15 +341,30 @@
     els.film.scrollLeft = target;
   }
 
-  function updateProgress() {
-    var max = els.film.scrollWidth - els.film.clientWidth;
-    var ratio = max > 0 ? Math.min(1, Math.max(0, els.film.scrollLeft / max)) : 0;
-    els.progress.style.transform = 'scaleX(' + ratio + ')';
+  function refreshFilmMetrics() {
+    frameStepCache = 0;
+    var style = window.getComputedStyle(els.film);
+    filmPadLeft = parseFloat(style.paddingLeft) || 0;
+    filmViewWidth = els.film.clientWidth;
+  }
 
+  function updateProgress() {
     var step = frameStep();
-    var index = step > 0 ? Math.round(els.film.scrollLeft / step) + 1 : 1;
-    index = Math.min(PHOTOS.length, Math.max(1, index));
-    if (els.counter) els.counter.textContent = pad(index) + ' / ' + PHOTOS.length;
+    var n = PHOTOS.length;
+    var loopWidth = n * step;
+    var frameWidth = Math.max(1, step - 20);
+    var pos = loopWidth > 0 ? ((els.film.scrollLeft % loopWidth) + loopWidth) % loopWidth : 0;
+    var center = pos + (filmViewWidth || els.film.clientWidth) / 2;
+    var indexFloat = step > 0 ? (center - filmPadLeft - frameWidth / 2) / step : 0;
+
+    while (indexFloat >= n) indexFloat -= n;
+    if (indexFloat < 0) indexFloat = 0;
+
+    var ratio = n > 1 ? Math.min(1, Math.max(0, indexFloat / (n - 1))) : 0;
+    els.progress.style.width = (ratio * 100).toFixed(3) + '%';
+
+    var index = Math.min(n, Math.max(1, Math.round(indexFloat) + 1));
+    if (els.counter) els.counter.textContent = pad(index) + ' / ' + n;
   }
 
   function playLoop(time) {
@@ -353,11 +373,13 @@
     var dt = Math.min((time - filmLast) / 1000, 0.05);
     filmLast = time;
 
-    var max = els.film.scrollWidth - els.film.clientWidth;
-    if (max > 0) {
+    var loopWidth = PHOTOS.length * frameStep();
+    if (loopWidth > 0) {
       var next = els.film.scrollLeft + 120 * dt;
-      if (next >= max - 1) next = 0;
+      while (next >= loopWidth) next -= loopWidth;
+      if (next < 0) next += loopWidth;
       els.film.scrollLeft = next;
+      updateProgress();
     }
     filmRaf = window.requestAnimationFrame(playLoop);
   }
@@ -380,10 +402,20 @@
   function initFilm() {
     var film = els.film;
 
+    $$('.frame', film).forEach(function (frame) {
+      var clone = frame.cloneNode(true);
+      clone.setAttribute('aria-hidden', 'true');
+      clone.setAttribute('tabindex', '-1');
+      els.track.appendChild(clone);
+    });
+
     $$('.frame img', film).forEach(function (img) { img.draggable = false; });
 
     film.addEventListener('scroll', updateProgress, { passive: true });
-    window.addEventListener('resize', updateProgress);
+    window.addEventListener('resize', function () {
+      refreshFilmMetrics();
+      updateProgress();
+    });
 
     els.prevBtn.addEventListener('click', function () {
       if (state.playing) setPlaying(false);
@@ -448,6 +480,7 @@
       if (document.hidden && state.playing) setPlaying(false);
     });
 
+    refreshFilmMetrics();
     updateProgress();
     setPlaying(true);
   }
